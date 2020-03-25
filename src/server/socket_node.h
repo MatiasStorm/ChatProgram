@@ -7,8 +7,8 @@ struct socket_node_s{
     socket_node_t *next;
 };
 
-
-void destroy_socket_node(socket_node_t *node, socket_node_t *head);
+socket_node_t* create_socket_node(int fd, socket_node_t* next);
+void destroy_socket_node(socket_node_t **node, socket_node_t *head);
 void push_socket_node(socket_node_t *node, socket_node_t *head);
 
 #endif

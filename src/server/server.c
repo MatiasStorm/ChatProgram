@@ -15,16 +15,9 @@
 
 #include "../settings.h"
 #include "server.h"
-// #include "socket_node.h"
 
 int client_fds[MAX_CONNECTIONS];
 int n_clients = 0;
-
-// typedef struct socket_node_s socket_node_t;
-// struct socket_node_s{
-//     int sock_fd;
-//     socket_node_t *next;
-// }; 
 socket_node_t *head = NULL;
 
 int write_message(socket_node_t *node, char *buffer){
@@ -51,7 +44,7 @@ void read_message(int sock_fd, char *buffer, int buffer_size){
 int disconnect_client(socket_node_t* node, char* buffer){
     if(strncmp("exit", buffer, 4) == 0){
         printf("%d left the server\n", node->sock_fd);
-        destroy_socket_node(node, head);
+        destroy_socket_node(&node, head);
         return 1;
     }
     return 0;

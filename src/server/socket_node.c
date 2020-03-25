@@ -3,13 +3,18 @@
 #include <stdio.h>
 #include <unistd.h>
 
+socket_node_t* create_socket_node(int fd, socket_node_t* next){
+    socket_node_t *node = malloc(sizeof(socket_node_t));
+    node->sock_fd = fd;
+    node->next = next;
+    return node;
+}
 
-
-void destroy_socket_node(socket_node_t *node, socket_node_t *head){
+void destroy_socket_node(socket_node_t **node){
     printf("Destroying %p\n", node);
-    close(node->sock_fd);
+    close((*node)->sock_fd);
     socket_node_t *element = head;
-    if(node->sock_fd == head->sock_fd){
+    if((*node)->sock_fd == head->sock_fd){
         while(element->next != head){
             element = element->next;
         }
@@ -22,12 +27,13 @@ void destroy_socket_node(socket_node_t *node, socket_node_t *head){
         }
     }
     else{
-        while(node->sock_fd != element->next->sock_fd){
+        while((*node)->sock_fd != element->next->sock_fd){
             element = element->next;
         }
         element->next = element->next->next;
     }
-    free(node);
+    free(*node);
+    *node = NULL;
 }
 
 void push_socket_node(socket_node_t *node, socket_node_t *head){

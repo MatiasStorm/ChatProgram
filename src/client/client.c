@@ -1,6 +1,6 @@
 #define _GNU_SOURCE
 
-#include "settings.h"
+#include "../settings.h"
 
 #include <stdlib.h>
 #include <stdio.h>
