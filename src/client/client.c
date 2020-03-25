@@ -17,7 +17,7 @@
 int thread_state = 0;
 
 void* reader(void* thread_data){
-    char buffer[BUF_CAP];
+    char buffer[BUF_CAP + MESSAGE_PREFIX_LENGTH];
     int sock_fd = *((int*) thread_data);
     while(thread_state == 0){
         bzero(buffer, sizeof(buffer));

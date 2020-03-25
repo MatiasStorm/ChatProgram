@@ -1,5 +1,5 @@
 LIBS = -lpthread
 
 all:
-	gcc -o ../../bin/server server.c socket_node.c $(LIBS)
+	gcc -o ../../bin/server server.c ../lib/llist.c $(LIBS)
 

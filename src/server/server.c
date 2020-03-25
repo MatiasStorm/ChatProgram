@@ -18,16 +18,19 @@
 
 int client_fds[MAX_CONNECTIONS];
 int n_clients = 0;
-socket_node_t *head = NULL;
+int server_sock_fd;
+llist* socket_list;
 
-int write_message(socket_node_t *node, char *buffer){
-    char message[BUF_CAP + 20];
-    bzero(message, sizeof(message));
-    sprintf(message, "Message from %d: %s", node->sock_fd, buffer);
+int write_message(llist_node *node, char *buffer){
+    char message[BUF_CAP + MESSAGE_PREFIX_LENGTH];
+    int sock_fd = *((int*)node->data);
+    sprintf(message, "Message from %d: %s", sock_fd, buffer);
     printf("%s", message);
-    socket_node_t *element = node;
+    llist_node *element = node;
+    int* next_fd;
     while(element->next != node){
-        if(write(element->next->sock_fd, message, sizeof(message)) == -1){
+        next_fd = element->next->data;
+        if(write(*next_fd, message, sizeof(message)) == -1){
             perror("write()");
             break;
         }
@@ -41,49 +44,43 @@ void read_message(int sock_fd, char *buffer, int buffer_size){
     }
 }
 
-int disconnect_client(socket_node_t* node, char* buffer){
+int disconnect_client(llist_node *socket_node, char* buffer){
     if(strncmp("exit", buffer, 4) == 0){
-        printf("%d left the server\n", node->sock_fd);
-        destroy_socket_node(&node, head);
+        int *socket_fd = (int*) socket_node->data;
+        printf("%d left the server\n", *socket_fd);
+        close(*socket_fd);
+        llist_destroy_node(socket_list, &socket_node);
         return 1;
     }
     return 0;
 }
 
 void* thread_function(void* thread_data){
-    socket_node_t *socket_node = (socket_node_t*) thread_data;
-    int sock_fd = socket_node->sock_fd;
-    // char message[BUF_CAP + 20];
+    llist_node *socket_node = (llist_node*) thread_data;
+    int *sock_fd = (int*)socket_node->data;
     char buffer[BUF_CAP];
 
     for(;;){
         bzero(buffer, sizeof(buffer));
-        // bzero(message, sizeof(message));
-        read_message(sock_fd, buffer, sizeof(buffer));
+        read_message(*sock_fd, buffer, sizeof(buffer));
 
         if(disconnect_client(socket_node, buffer)){
             break;
         }
         write_message(socket_node, buffer);   
-        // sprintf(message, "Message from %d: %s", sock_fd, buffer);
-        // printf("%s", message);
-        // socket_node_t *element = socket_node;
-        // while(element->next != socket_node){
-        //     if(write(element->next->sock_fd, message, sizeof(message)) == -1){
-        //         perror("write()");
-        //         break;
-        //     }
-        // }
     }
 }
 
-int server_sock_fd;
+
+
 
 void cleanup(){
     printf("Closing socket...\n");
     close(server_sock_fd);
+    // Tell all threads to clean up.
     exit(0);
 }
+
 
 int main(int argc, char const *argv[])
 {
@@ -107,7 +104,12 @@ int main(int argc, char const *argv[])
     server_address.sin_family = AF_INET; 
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); 
     server_address.sin_port = htons(PORT); 
-  
+    
+    int enable = 1;
+    if (setsockopt(server_sock_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0){
+        perror("setsockopt(SO_REUSEADDR) failed");
+    }
+
     // Binding newly created socket to given IP and verification 
     if ((bind(server_sock_fd, (struct sockaddr_in*) &server_address, sizeof(server_address))) != 0) { 
         printf("socket bind failed...\n"); 
@@ -130,26 +132,18 @@ int main(int argc, char const *argv[])
 
     pthread_t threads[MAX_CONNECTIONS];
     size_t n_threads = 0;
+    socket_list = malloc(sizeof(llist));
 
     for(;;){
-        socket_node_t *new_socket_node = malloc(sizeof(socket_node_t));
+        int *new_socket_fd = malloc(sizeof(int));
 
-        new_socket_node->sock_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
-        
-        push_socket_node(new_socket_node, head);
+        *new_socket_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
+            
+        llist_node* socket_node = llist_add_node(socket_list, (void*)new_socket_fd);
 
-        // if(head == NULL){
-        //     new_socket_node->next = new_socket_node;
-        // }
-        // else{
-        //     new_socket_node->next = head->next;
-        //     head->next = new_socket_node;
-        // }
-        // head = new_socket_node;
+        printf("Connection made: client_fd=%d\n", *new_socket_fd);
 
-        printf("Connection made: client_fd=%d\n", new_socket_node->sock_fd);
-
-        pthread_create(&threads[n_threads], NULL, thread_function, (void*) new_socket_node);
+        pthread_create(&threads[n_threads], NULL, thread_function, (void*) socket_node);
     }
 
     return 0;
