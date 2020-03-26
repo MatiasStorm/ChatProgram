@@ -1,4 +1,3 @@
 #define PORT 1234
 #define BUF_CAP 100
 #define MESSAGE_PREFIX_LENGTH 20
-#define MAX_CONNECTIONS 5

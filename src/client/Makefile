@@ -1,5 +1,5 @@
 LIBS = -lpthread
 
 all:
-	gcc -o ../../bin/client client.c $(LIBS)
+	gcc -o ../../bin/client main.c client.c $(LIBS)
 

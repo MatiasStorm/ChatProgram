@@ -12,83 +12,40 @@
 #include <wait.h>
 #include <arpa/inet.h>
 #include <signal.h>
+#include <poll.h>
 
 #include "../settings.h"
 #include "server.h"
 
+#define MAX_CONNECTIONS 5
+
 int client_fds[MAX_CONNECTIONS];
 int n_clients = 0;
 int server_sock_fd;
+int server_on = 1;
 llist* socket_list;
 
-int write_message(llist_node *node, char *buffer){
-    char message[BUF_CAP + MESSAGE_PREFIX_LENGTH];
-    int sock_fd = *((int*)node->data);
-    sprintf(message, "Message from %d: %s", sock_fd, buffer);
-    printf("%s", message);
-    llist_node *element = node;
-    int* next_fd;
-    while(element->next != node){
-        next_fd = element->next->data;
-        if(write(*next_fd, message, sizeof(message)) == -1){
-            perror("write()");
-            break;
-        }
-        element = element->next;
-    }
-}
 
-void read_message(int sock_fd, char *buffer, int buffer_size){
-    if(read(sock_fd, buffer, buffer_size) == -1){
-        perror("read()");
-    }
-}
-
-int disconnect_client(llist_node *socket_node, char* buffer){
-    if(strncmp("exit", buffer, 4) == 0){
-        int *socket_fd = (int*) socket_node->data;
-        printf("%d left the server\n", *socket_fd);
-        close(*socket_fd);
-        llist_destroy_node(socket_list, &socket_node);
-        return 1;
-    }
-    return 0;
-}
-
-void* thread_function(void* thread_data){
-    llist_node *socket_node = (llist_node*) thread_data;
-    int *sock_fd = (int*)socket_node->data;
-    char buffer[BUF_CAP];
-
-    for(;;){
-        bzero(buffer, sizeof(buffer));
-        read_message(*sock_fd, buffer, sizeof(buffer));
-
-        if(disconnect_client(socket_node, buffer)){
-            break;
-        }
-        write_message(socket_node, buffer);   
-    }
-}
-
-
-
-
-void cleanup(){
-    printf("Closing socket...\n");
-    close(server_sock_fd);
-    // Tell all threads to clean up.
-    exit(0);
-}
-
-
-int main(int argc, char const *argv[])
-{
+void run_server(){
     signal(SIGINT, cleanup);
     if (atexit(cleanup) != 0) {
         fprintf(stderr, "cannot set exit function\n");
         exit(EXIT_FAILURE);
     }
+
+    int server_sock_fd = create_server_socket();
+    listen_for_clients(server_sock_fd);
+}
+
+void cleanup(){
+    printf("Closing socket...\n");
+    close(server_sock_fd);
+    llist_destroy(&socket_list);
+    // Tell all threads to clean up.
+    exit(0);
+}
+
+int create_server_socket(){
     struct sockaddr_in server_address, client_address; 
   
     // socket create and verification 
@@ -126,9 +83,12 @@ int main(int argc, char const *argv[])
     printf("Listening on file descriptor %d, port %d\n", server_sock_fd, ntohs(server_address.sin_port));
 
     printf("Waiting for connection...\n");
+    return server_sock_fd;
+}
 
+void listen_for_clients(int server_sock_fd){
+    struct sockaddr_in client_address; 
     socklen_t client_size = sizeof(client_address);
-
 
     pthread_t threads[MAX_CONNECTIONS];
     size_t n_threads = 0;
@@ -143,8 +103,59 @@ int main(int argc, char const *argv[])
 
         printf("Connection made: client_fd=%d\n", *new_socket_fd);
 
-        pthread_create(&threads[n_threads], NULL, thread_function, (void*) socket_node);
+        pthread_create(&threads[n_threads], NULL, connect_client, (void*) socket_node);
     }
+}
 
+void* connect_client(void* thread_data){
+    llist_node *socket_node = (llist_node*) thread_data;
+    int *sock_fd = (int*)socket_node->data;
+    char buffer[BUF_CAP];
+
+    while(server_on){
+        bzero(buffer, sizeof(buffer));
+        read_message(*sock_fd, buffer, sizeof(buffer));
+
+        if(disconnect_client(socket_node, buffer)){
+            break;
+        }
+        write_message(socket_node, buffer);   
+    }
+}
+
+
+int write_message(llist_node *node, char *buffer){
+    char message[BUF_CAP + MESSAGE_PREFIX_LENGTH];
+    int sock_fd = *((int*)node->data);
+    sprintf(message, "Message from %d: %s", sock_fd, buffer);
+    printf("%s", message);
+    llist_node *element = node;
+    int* next_fd;
+    while(element->next != node){
+        next_fd = element->next->data;
+        if(write(*next_fd, message, sizeof(message)) == -1){
+            perror("write()");
+            break;
+        }
+        element = element->next;
+    }
+}
+
+void read_message(int sock_fd, char *buffer, int buffer_size){
+    if(read(sock_fd, buffer, buffer_size) == -1){
+        perror("read()");
+    }
+}
+
+int disconnect_client(llist_node *socket_node, char* buffer){
+    if(strncmp("exit", buffer, 4) == 0){
+        int *socket_fd = (int*) socket_node->data;
+        printf("%d left the server\n", *socket_fd);
+        close(*socket_fd);
+        llist_destroy_node(socket_list, &socket_node);
+        return 1;
+    }
     return 0;
 }
+
+
