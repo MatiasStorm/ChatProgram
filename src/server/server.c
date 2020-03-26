@@ -79,18 +79,19 @@ int create_server_socket(){
     } 
 
     printf("Listening on file descriptor %d, port %d\n", server_sock_fd, ntohs(server_address.sin_port));
-
-    printf("Waiting for connection...\n");
     return server_sock_fd;
 }
 
 void listen_for_clients(int server_sock_fd){
+    printf("Waiting for connection...\n");
 
-    int timeout, poll_ret, n_poll_fds = 1;
-    struct pollfd poll_fds[n_poll_fds];
+    int timeout, poll_ret;
+    struct pollfd poll_fds[2];
 
     poll_fds[0].fd = server_sock_fd;
     poll_fds[0].events = POLLIN;
+    poll_fds[1].fd = STDIN_FILENO;
+    poll_fds[1].events = POLLIN;
     timeout = 5000;    
     
     struct sockaddr_in client_address; 
@@ -101,12 +102,17 @@ void listen_for_clients(int server_sock_fd){
     socket_list = malloc(sizeof(llist));
 
     while(server_on){
-        poll_ret = poll(poll_fds, n_poll_fds, timeout);
+        poll_ret = poll(poll_fds, 2, timeout);
+        printf("POLL %d\n", poll_ret);
         if(poll_ret == -1){
             perror("poll()");
             exit(0);
         }
-        else if(poll_ret == server_sock_fd){
+        else if(poll_ret == 0){
+            printf("Timed out, looping again %d\n", poll_ret);
+            continue;
+        }
+        else if(poll_fds[0].revents & POLLIN){
             int *new_socket_fd = malloc(sizeof(int));
 
             *new_socket_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
@@ -117,7 +123,14 @@ void listen_for_clients(int server_sock_fd){
 
             pthread_create(&threads[n_threads], NULL, connect_client, (void*) socket_node);
         }
-        printf("Timed out, looping again\n");
+        else if(poll_fds[1].revents & POLLIN){
+            char buf[10];
+            bzero(buf, 10);
+            fgets(buf, 10, stdin);
+            if(strncmp("exit", buf, 4) == 0){
+                exit(0);
+            }
+        }
     }
 }
 
