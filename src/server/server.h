@@ -2,6 +2,8 @@
 #define SERVER_H
 #include "../../lib/llist.h"
 
+#define MAX_CONNECTIONS 5
+
 
 void run_server();
 

@@ -17,8 +17,6 @@
 #include "../settings.h"
 #include "server.h"
 
-#define MAX_CONNECTIONS 5
-
 int client_fds[MAX_CONNECTIONS];
 int n_clients = 0;
 int server_sock_fd;
@@ -87,6 +85,14 @@ int create_server_socket(){
 }
 
 void listen_for_clients(int server_sock_fd){
+
+    int timeout, poll_ret, n_poll_fds = 1;
+    struct pollfd poll_fds[n_poll_fds];
+
+    poll_fds[0].fd = server_sock_fd;
+    poll_fds[0].events = POLLIN;
+    timeout = 5000;    
+    
     struct sockaddr_in client_address; 
     socklen_t client_size = sizeof(client_address);
 
@@ -94,16 +100,24 @@ void listen_for_clients(int server_sock_fd){
     size_t n_threads = 0;
     socket_list = malloc(sizeof(llist));
 
-    for(;;){
-        int *new_socket_fd = malloc(sizeof(int));
+    while(server_on){
+        poll_ret = poll(poll_fds, n_poll_fds, timeout);
+        if(poll_ret == -1){
+            perror("poll()");
+            exit(0);
+        }
+        else if(poll_ret == server_sock_fd){
+            int *new_socket_fd = malloc(sizeof(int));
 
-        *new_socket_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
-            
-        llist_node* socket_node = llist_add_node(socket_list, (void*)new_socket_fd);
+            *new_socket_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
+                
+            llist_node* socket_node = llist_add_node(socket_list, (void*)new_socket_fd);
 
-        printf("Connection made: client_fd=%d\n", *new_socket_fd);
+            printf("Connection made: client_fd=%d\n", *new_socket_fd);
 
-        pthread_create(&threads[n_threads], NULL, connect_client, (void*) socket_node);
+            pthread_create(&threads[n_threads], NULL, connect_client, (void*) socket_node);
+        }
+        printf("Timed out, looping again\n");
     }
 }
 
