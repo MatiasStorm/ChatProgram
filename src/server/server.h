@@ -1,6 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
-#include "../lib/llist.h"
+#include "../../lib/llist.h"
 
 
 int write_message(llist_node *node, char *buffer);

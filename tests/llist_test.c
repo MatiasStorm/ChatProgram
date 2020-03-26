@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <check.h>
 
-#include "../src/lib/llist.h"
+#include "../lib/llist.h"
 
 
 
