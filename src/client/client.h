@@ -3,8 +3,8 @@
 
 void* reader(void* thread_data);
 void* writer(void* thread_data);
-int* connect_to_server();
-void run_client();
+int* connect_to_server(int port, const char *ip);
+void run_client(int port, const char *ip);
 
 #endif // CLIENT_H
 

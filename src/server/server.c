@@ -24,14 +24,14 @@ int server_on = 1;
 llist* socket_list;
 
 
-void run_server(){
+void run_server(int port){
     signal(SIGINT, cleanup);
     if (atexit(cleanup) != 0) {
         fprintf(stderr, "cannot set exit function\n");
         exit(EXIT_FAILURE);
     }
 
-    int server_sock_fd = create_server_socket();
+    int server_sock_fd = create_server_socket(port);
     listen_for_clients(server_sock_fd);
 }
 
@@ -43,7 +43,7 @@ void cleanup(){
     exit(0);
 }
 
-int create_server_socket(){
+int create_server_socket(int port){
     struct sockaddr_in server_address, client_address; 
   
     // socket create and verification 
@@ -58,11 +58,12 @@ int create_server_socket(){
     // assign IP, PORT 
     server_address.sin_family = AF_INET; 
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); 
-    server_address.sin_port = htons(PORT); 
+    server_address.sin_port = htons(port); 
     
     int enable = 1;
     if (setsockopt(server_sock_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int)) < 0){
         perror("setsockopt(SO_REUSEADDR) failed");
+        exit(0);
     }
 
     // Binding newly created socket to given IP and verification 
@@ -103,16 +104,11 @@ void listen_for_clients(int server_sock_fd){
 
     while(server_on){
         poll_ret = poll(poll_fds, 2, timeout);
-        printf("POLL %d\n", poll_ret);
         if(poll_ret == -1){
             perror("poll()");
             exit(0);
         }
-        else if(poll_ret == 0){
-            printf("Timed out, looping again %d\n", poll_ret);
-            continue;
-        }
-        else if(poll_fds[0].revents & POLLIN){
+        else if(poll_fds[0].revents){
             int *new_socket_fd = malloc(sizeof(int));
 
             *new_socket_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
@@ -123,7 +119,7 @@ void listen_for_clients(int server_sock_fd){
 
             pthread_create(&threads[n_threads], NULL, connect_client, (void*) socket_node);
         }
-        else if(poll_fds[1].revents & POLLIN){
+        else if(poll_fds[1].revents){
             char buf[10];
             bzero(buf, 10);
             fgets(buf, 10, stdin);

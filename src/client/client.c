@@ -17,8 +17,8 @@
 
 int client_on = 1;
 
-void run_client(){
-    int* sock_fd = connect_to_server();
+void run_client(int port, const char* ip){
+    int* sock_fd = connect_to_server(port, ip);
 
     pthread_t threads[2];
     pthread_create(&threads[0], NULL, writer, (void*) sock_fd);
@@ -29,7 +29,7 @@ void run_client(){
     free(sock_fd);
 }
 
-int* connect_to_server(){
+int* connect_to_server(int port, const char *ip){
     int* sock_fd = malloc(sizeof(int));
     struct sockaddr_in server_address;
     *sock_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -42,9 +42,10 @@ int* connect_to_server(){
     bzero(&server_address, sizeof(server_address));
 
     server_address.sin_family = AF_INET;
-    server_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    server_address.sin_port = htons(PORT);
+    server_address.sin_addr.s_addr = inet_addr(ip);
+    server_address.sin_port = htons(port);
 
+    printf("Connecting to server on, %s:%d\n", ip, port);
     if(connect(*sock_fd, (struct sockaddr*) &server_address, sizeof(server_address)) != 0){
         printf("Connection to server failed...\n");
         exit(1);

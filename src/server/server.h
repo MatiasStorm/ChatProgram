@@ -5,9 +5,9 @@
 #define MAX_CONNECTIONS 5
 
 
-void run_server();
+void run_server(int port);
 
-int create_server_socket();
+int create_server_socket(int port);
 
 void listen_for_clients(int server_sock_fd);
 
