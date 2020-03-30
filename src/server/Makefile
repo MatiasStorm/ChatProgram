@@ -1,5 +1,6 @@
 LIBS = -lpthread
+UTILS = ../utils/io.c ../../lib/llist.c
 
 all:
-	gcc -o ../../bin/server server.c main.c ../../lib/llist.c $(LIBS)
+	gcc -o ../../bin/server server.c main.c  $(UTILS) $(LIBS)
 

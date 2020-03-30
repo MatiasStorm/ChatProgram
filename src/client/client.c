@@ -13,6 +13,7 @@
 #include <pthread.h>
 
 #include "../settings.h"
+#include "../utils/io.h"
 #include "client.h"
 
 int client_on = 1;
@@ -55,31 +56,33 @@ int* connect_to_server(int port, const char *ip){
 }
 
 void* reader(void* thread_data){
-    char buffer[BUF_CAP + MESSAGE_PREFIX_LENGTH];
     int sock_fd = *((int*) thread_data);
-    while(client_on){
-        bzero(buffer, sizeof(buffer));
-        read(sock_fd, buffer, sizeof(buffer));
-        printf("READ: %s", buffer);
+    FILE *sock_file = fdopen(sock_fd, "r");
+    char *message;
+    while(1){
+        message = read_from_file(sock_file);
+        printf("READ: %s", message);
+        free(message);
     }
+    free(message);
 }
 
 void* writer(void* thread_data){
-    char buffer[BUF_CAP];
     int sock_fd = *((int*) thread_data);
-    int n;
+    FILE *sock_file = fdopen(sock_fd, "w");
+    char *input;
     while(client_on){
-        bzero(buffer, sizeof(buffer));
-        n = 0;
-        while((buffer[n++] = getchar()) != '\n');
+        input = read_from_file(stdin);
+        write_to_file(sock_file, input);
         
-        write(sock_fd, buffer, sizeof(buffer));
-
-        if(strncmp("exit", buffer, 4) == 0){
+        if(strncmp("exit", input, 4) == 0){
             printf("Client closed. Exiting.\n");
             client_on = -1;
             break;
         }
+        free(input);
     }
+    fclose(sock_file);
+    free(input);
 }
 
