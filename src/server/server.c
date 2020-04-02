@@ -39,7 +39,6 @@ void cleanup(){
     printf("Closing socket...\n");
     close(server_sock_fd);
     llist_destroy(&socket_list);
-    // Tell all threads to clean up.
     exit(0);
 }
 
@@ -99,7 +98,7 @@ void listen_for_clients(int server_sock_fd){
     socklen_t client_size = sizeof(client_address);
 
     pthread_t threads[MAX_CONNECTIONS];
-    size_t n_threads = 0;
+    // TODO: n_threads needs to be decremented when client disconnects!!
     socket_list = llist_create();
 
     while(server_on){
@@ -117,36 +116,61 @@ void listen_for_clients(int server_sock_fd){
 
             printf("Connection made: client_fd=%d\n", *new_socket_fd);
 
-            pthread_create(&threads[n_threads], NULL, connect_client, (void*) socket_node);
+            pthread_create(&threads[n_clients++], NULL, connect_client, (void*) socket_node);
         }
         else if(poll_fds[1].revents){
             char buf[10];
             bzero(buf, 10);
             fgets(buf, 10, stdin);
             if(strncmp("exit", buf, 4) == 0){
-                exit(0);
+                server_on = 0;
+                break;
             }
         }
+    }
+    // Wait for all client threads to exit.
+    for(int i = 0; i < n_clients; i++){
+        pthread_join(threads[i], NULL);
     }
 }
 
 void* connect_client(void* thread_data){
     llist_node *socket_node = (llist_node*) thread_data;
     int *sock_fd = (int*)socket_node->data;
-    char buffer[BUF_CAP];
-    FILE *sock_file = fdopen(*sock_fd, "rw");
+    FILE *sock_file = fdopen(*sock_fd, "r+");
+
+    int timeout, poll_ret;
+    struct pollfd poll_fds[1];
+
+    poll_fds[0].fd = *sock_fd;
+    poll_fds[0].events = POLLIN;
+    timeout = 1000;
+
     char *message;
     while(server_on){
-        bzero(buffer, sizeof(buffer));
-        message = read_from_file(sock_file);
-
-        if(strncmp("exit", message, 4) == 0){
-            break;
+        poll_ret = poll(poll_fds, 1, timeout);
+        if(poll_ret == -1){
+            perror("poll()");
+            exit(0);
         }
-        broadcast_message(socket_node, message);   
-        free(message);
+        else if(poll_fds[0].revents){
+            message = read_from_file(sock_file);
+            if(strncmp("exit", message, 4) == 0){
+                break;
+            }
+            broadcast_message(socket_node, message);   
+            free(message);
+            message = NULL;
+        }
     }
     free(message);
+    message = NULL;
+
+    if(!server_on){ // Tell client to exit.
+        printf("Writing exit to client\n");
+        write_to_file(sock_file, "exit\n");
+        fflush(sock_file);
+    }
     disconnect_client(socket_node);
     fclose(sock_file);
 }
@@ -154,14 +178,16 @@ void* connect_client(void* thread_data){
 
 int broadcast_message(llist_node *node, char *message){
     int sock_fd = *((int*)node->data);
-    printf("Message from %d: %s", sock_fd, message);
+    char broadcast_message[20 + strlen(message)];
+    sprintf(broadcast_message, "Message from %d: %s", sock_fd, message);
+    printf("%s", broadcast_message);
     
     llist_node *element = node;
     int* next_fd;
     while(element->next != node){
         next_fd = element->next->data;
         FILE *next_file = fdopen(*next_fd, "w");
-        write_to_file(next_file, message);
+        write_to_file(next_file, broadcast_message);
         element = element->next;
     }
 }
@@ -171,6 +197,7 @@ void disconnect_client(llist_node *socket_node){
     printf("%d left the server\n", *socket_fd);
     close(*socket_fd);
     llist_destroy_node(socket_list, &socket_node);
+    n_clients--;
 }
 
 

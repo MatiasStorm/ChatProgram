@@ -1,18 +1,25 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <string.h>
 
 char* read_from_file(FILE* file){
     size_t size = 16;
+    size_t old_size;
     int index = 0;
-    char *input = malloc(sizeof(char) * size);
+    char* input = (char*) malloc(sizeof(char) * size);
+    bzero(input, size);
     char c;
     while((c = fgetc(file)) != '\n'){
         input[index++] = c;
         if(index >= (size - 1)){
+            old_size = size;
             size *= 2;
             input = realloc(input, size);
             if(!input) return input;
+            for(int i = old_size; i < size; i++){
+                input[i] = '\0';
+            }
         }
     }
     input[index] = '\n';

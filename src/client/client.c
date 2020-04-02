@@ -11,6 +11,7 @@
 #include <arpa/inet.h>
 #include <wait.h>
 #include <pthread.h>
+#include <poll.h>
 
 #include "../settings.h"
 #include "../utils/io.h"
@@ -24,10 +25,18 @@ void run_client(int port, const char* ip){
     pthread_t threads[2];
     pthread_create(&threads[0], NULL, writer, (void*) sock_fd);
     pthread_create(&threads[1], NULL, reader, (void*) sock_fd);
-    pthread_join(threads[0], NULL);
-
-    close(*sock_fd);
+    for(int i = 0; i < 2; i++){
+        if(pthread_join(threads[i], NULL) != 0){
+            perror("pthread_join()");
+            exit(1);
+        }
+    }
+    if(close(*sock_fd) == -1){
+        perror("close()");
+        exit(0);
+    }
     free(sock_fd);
+    printf("Exiting...\n");
 }
 
 int* connect_to_server(int port, const char *ip){
@@ -57,32 +66,62 @@ int* connect_to_server(int port, const char *ip){
 
 void* reader(void* thread_data){
     int sock_fd = *((int*) thread_data);
+
+    struct pollfd poll_fd[1];
+    poll_fd[0].fd = sock_fd;
+    poll_fd[0].events = POLLIN;
+    int poll_ret;
+    int timeout = 1000;
+
     FILE *sock_file = fdopen(sock_fd, "r");
     char *message;
-    while(1){
-        message = read_from_file(sock_file);
-        printf("READ: %s", message);
-        free(message);
+
+    while(client_on){
+        poll_ret = poll(poll_fd, 1, timeout);
+        if(poll_ret == -1){
+            perror("poll()");
+            exit(0);
+        }
+        else if(poll_fd->revents & POLLIN && client_on){
+            message = read_from_file(sock_file);
+            if(strncmp("exit", message, 4) == 0){
+                printf("Server closed.\n");
+                client_on = 0;
+            }
+            free(message);
+            message = NULL;
+        }
     }
-    free(message);
 }
 
 void* writer(void* thread_data){
     int sock_fd = *((int*) thread_data);
+    
+    struct pollfd poll_fd[1];
+    poll_fd[0].fd = STDIN_FILENO;
+    poll_fd[0].events = POLLIN;
+    int poll_ret;
+    int timeout = 1000;
+    
     FILE *sock_file = fdopen(sock_fd, "w");
     char *input;
+
     while(client_on){
-        input = read_from_file(stdin);
-        write_to_file(sock_file, input);
-        
-        if(strncmp("exit", input, 4) == 0){
-            printf("Client closed. Exiting.\n");
-            client_on = -1;
-            break;
+        poll_ret = poll(poll_fd, 1, timeout);
+        if(poll_ret == -1){
+            perror("poll()");
+            exit(0);
         }
-        free(input);
+        else if(poll_fd->revents & POLLIN){
+            input = read_from_file(stdin);
+            if(strncmp("exit", input, 4) == 0){
+                client_on = 0;
+            }
+            write_to_file(sock_file, input); // Has to be after setting client_on = 0, to avoid race condition.
+            
+            free(input);
+            input = NULL;
+        }
     }
-    fclose(sock_file);
-    free(input);
 }
 
