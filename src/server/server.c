@@ -98,7 +98,6 @@ void listen_for_clients(int server_sock_fd){
     socklen_t client_size = sizeof(client_address);
 
     pthread_t threads[MAX_CONNECTIONS];
-    // TODO: n_threads needs to be decremented when client disconnects!!
     socket_list = llist_create();
 
     while(server_on){

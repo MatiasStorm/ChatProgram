@@ -120,7 +120,7 @@ END_TEST
 
 
 
-Suite * money_suite(void)
+Suite * llist_suite(void)
 {
     Suite *s;
     TCase *tc_core;
@@ -146,7 +146,7 @@ int main(void)
   Suite *s;
   SRunner *sr;
 
-  s = money_suite();
+  s = llist_suite();
   sr = srunner_create(s);
 
   srunner_run_all(sr, CK_NORMAL);
