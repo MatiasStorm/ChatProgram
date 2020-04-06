@@ -13,6 +13,7 @@
 #include <arpa/inet.h>
 #include <signal.h>
 #include <poll.h>
+#include <fcntl.h>
 
 #include "../settings.h"
 #include "../utils/io.h"
@@ -166,12 +167,14 @@ void* connect_client(void* thread_data){
     message = NULL;
 
     if(!server_on){ // Tell client to exit.
-        printf("Writing exit to client\n");
+        printf("Writing exit to client: %d\n", *sock_fd);
         write_to_file(sock_file, "exit\n");
         fflush(sock_file);
+        sleep(2); // Give client time to disconnect
     }
     disconnect_client(socket_node);
     fclose(sock_file);
+    pthread_exit(NULL);
 }
 
 
@@ -187,6 +190,7 @@ int broadcast_message(llist_node *node, char *message){
         next_fd = element->next->data;
         FILE *next_file = fdopen(*next_fd, "w");
         write_to_file(next_file, broadcast_message);
+        fflush(next_file);
         element = element->next;
     }
 }
@@ -194,9 +198,11 @@ int broadcast_message(llist_node *node, char *message){
 void disconnect_client(llist_node *socket_node){
     int *socket_fd = (int*) socket_node->data;
     printf("%d left the server\n", *socket_fd);
-    close(*socket_fd);
+    if(fcntl(*socket_fd, F_GETFD) != -1){
+        close(*socket_fd);
+    }
     llist_destroy_node(socket_list, &socket_node);
-    n_clients--;
+    // n_clients--;
 }
 
 

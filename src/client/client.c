@@ -88,6 +88,7 @@ void* reader(void* thread_data){
                 printf("Server closed.\n");
                 client_on = 0;
             }
+            printf("%s", message);
             free(message);
             message = NULL;
         }
