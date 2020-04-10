@@ -5,9 +5,10 @@
 #include "llist.h"
 
 
-llist* llist_create(){
+llist* llist_create(void(*free_data_func)(void*)){
     llist* list = malloc(sizeof(llist));
     list->head = NULL;
+    list->free_data_func = free_data_func;
     return list;
 }
 
@@ -50,7 +51,8 @@ void llist_destroy_node(llist* list, llist_node** node){
         }
         n->next = n->next->next;
     }
-    free((*node)->data);
+    list->free_data_func((*node)->data);
+    // free((*node)->data);
     (*node)->data = NULL;
     free(*node);
     *node = NULL;

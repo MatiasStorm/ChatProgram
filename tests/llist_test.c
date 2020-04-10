@@ -4,10 +4,13 @@
 #include "../lib/llist.h"
 
 
+void free_data(void * data){
+    free(((int*) data));
+}
 
 START_TEST(test_create_and_destroy_llist)
 {
-    llist *list = llist_create();
+    llist *list = llist_create(free_data);
     ck_assert_ptr_eq(list->head, NULL);
     llist_destroy(&list);
     ck_assert_ptr_eq(list, NULL);
@@ -17,7 +20,7 @@ END_TEST
 
 START_TEST(destory_single_node)
 {
-    llist *list = llist_create();
+    llist *list = llist_create(free_data);
     int* data = malloc(sizeof(int));
     *data = 1;
     llist_node* node = llist_add_node(list, ((void*) data));
@@ -30,7 +33,7 @@ END_TEST
 
 START_TEST(test_add_single_node)
 {
-    llist *list = llist_create();
+    llist *list = llist_create(free_data);
     int* data = malloc(sizeof(int));
     *data = 1;
     llist_node* node = llist_add_node(list, (void*) data);    
@@ -47,7 +50,7 @@ END_TEST
 
 START_TEST(test_add_multiple_nodes)
 {
-    llist *list = llist_create();
+    llist *list = llist_create(free_data);
     int* data1 = malloc(sizeof(int));
     *data1 = 1;
     llist_node* node1 = llist_add_node(list, ((void*) data1));    
@@ -71,7 +74,7 @@ END_TEST
 
 START_TEST(destory_one_node_multiple_nodes)
 {
-    llist *list = llist_create();
+    llist *list = llist_create(free_data);
     int* data1 = malloc(sizeof(int));
     *data1 = 1;
     llist_node* node1 = llist_add_node(list, ((void*) data1));    
@@ -98,7 +101,7 @@ END_TEST
 
 START_TEST(destory_head_node_multiple_nodes)
 {
-    llist *list = llist_create();
+    llist *list = llist_create(free_data);
     int* data1 = malloc(sizeof(int));
     *data1 = 1;
     llist_node* node1 = llist_add_node(list, ((void*) data1));    
