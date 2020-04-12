@@ -11,6 +11,8 @@ PORT defaults to 1234 if not provided.
 
 To close the server type ```exit``` in terminal running the server.
 
+Max number of clients, that can be connected is determined by the ```MAX_CONNECTIONS``` constant defined in src/settings.h.
+
 ## Client
 The client can be run on the same computer as the server and on other computers on the same network.
 
