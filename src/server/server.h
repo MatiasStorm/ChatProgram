@@ -1,6 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
-#include "../../lib/llist.h"
+#include "../utils/llist/llist.h"
 
 #define MAX_CONNECTIONS 5
 

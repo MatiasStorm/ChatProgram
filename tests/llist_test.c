@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <check.h>
 
-#include "../lib/llist.h"
+#include "../src/utils/llist/llist.h"
 
 
 void free_data(void * data){

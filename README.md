@@ -40,9 +40,7 @@ ChatProgram$ make test
 ```
 
 ## TODO:
-- Use mutexes for global variables.
 - Improve on input args (maybe use flags?).
 - Write documentation.
 - Ask clients to provide a name.
-- Fix thread memory leak on the server when clients diconnects (Somehow add a pthread_join for every new thread).
 

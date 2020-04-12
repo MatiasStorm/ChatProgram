@@ -52,7 +52,6 @@ void llist_destroy_node(llist* list, llist_node** node){
         n->next = n->next->next;
     }
     list->free_data_func((*node)->data);
-    // free((*node)->data);
     (*node)->data = NULL;
     free(*node);
     *node = NULL;

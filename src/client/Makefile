@@ -1,5 +1,5 @@
 LIBS = -lpthread
-UTILS = ../utils/io.c
+UTILS = ../utils/io/io.c
 FLAGS = -g
 
 all:
