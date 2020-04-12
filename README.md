@@ -23,9 +23,12 @@ PORT defaults to 1234 if not provided, IP has to be provided if the PORT is.
 
 When a client is connected it can send messages to all other clients connected to the server.
 
-## Libs
+## Utils
 ### llist:
 llist is a linked list implementation, used to the server to keep track of all connectec clients and broadcast messages to all connected clients.
+
+### IO:
+Input/output methods, to handle writing and reading from sockets.
 
 ## Make
 To make the binaries run:
