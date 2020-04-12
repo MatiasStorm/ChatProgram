@@ -2,9 +2,6 @@
 #define SERVER_H
 #include "../utils/llist/llist.h"
 
-#define MAX_CONNECTIONS 5
-
-
 void run_server(int port);
 
 void connection_thread_destroy(void *connection);
