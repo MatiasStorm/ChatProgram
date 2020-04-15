@@ -64,8 +64,8 @@ int* connect_to_server(int port, const char *ip){
     return sock_fd;
 }
 
-void* reader(void* thread_data){
-    int sock_fd = *((int*) thread_data);
+void* reader(void* sfd){
+    int sock_fd = *((int*) sfd);
 
     struct pollfd poll_fd[1];
     poll_fd[0].fd = sock_fd;
@@ -95,8 +95,8 @@ void* reader(void* thread_data){
     }
 }
 
-void* writer(void* thread_data){
-    int sock_fd = *((int*) thread_data);
+void* writer(void* sfd){
+    int sock_fd = *((int*) sfd);
     
     struct pollfd poll_fd[1];
     poll_fd[0].fd = STDIN_FILENO;

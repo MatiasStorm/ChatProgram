@@ -19,19 +19,19 @@
 #include "../utils/io/io.h"
 #include "server.h"
 
-int server_sock_fd;
-int server_on = 1;
-int MAX_CLIENT_NAME_SIZE = 5;
-
-llist* client_llist;
 
 void connection_thread_destroy(void *connection){
     connection_thread_t* connection_thread = (connection_thread_t*) connection;
     free(connection_thread->thread);
+    free(connection_thread->client_name);
     free(connection_thread);
 }
 
 void run_server(int port){
+    client_llist = llist_create(connection_thread_destroy);
+    pthread_mutex_init(&client_llist_mutex, NULL);
+    server_on = 1;
+
     signal(SIGINT, cleanup);
     if (atexit(cleanup) != 0) {
         fprintf(stderr, "cannot set exit function\n");
@@ -45,6 +45,7 @@ void cleanup(){
     printf("Closing socket...\n");
     close(server_sock_fd);
     llist_destroy(&client_llist);
+    pthread_mutex_destroy(&client_llist_mutex);
     exit(0);
 }
 
@@ -88,7 +89,7 @@ int create_server_socket(int port){
     return server_sock_fd;
 }
 
-void listen_for_clients(int server_sock_fd){
+void listen_for_clients(){
     printf("Waiting for connection...\n");
 
     int timeout, poll_ret;
@@ -99,8 +100,6 @@ void listen_for_clients(int server_sock_fd){
     poll_fds[1].fd = STDIN_FILENO;
     poll_fds[1].events = POLLIN;
     timeout = 5000;    
-    
-    client_llist = llist_create(connection_thread_destroy);
 
     int error_code;
     while(server_on){
@@ -149,7 +148,10 @@ void initialize_client_thread(){
 
     int client_sock_fd = accept(server_sock_fd, (struct sockaddr*) &client_address, &client_size);
     thread_data->sock_fd = client_sock_fd;
+
+    pthread_mutex_lock(&client_llist_mutex);
     llist_node* socket_node = llist_add_node(client_llist, (void*)thread_data);
+    pthread_mutex_unlock(&client_llist_mutex);
     
     pthread_t *thread = ((connection_thread_t*) socket_node->data)->thread;
     int error_code;
@@ -212,7 +214,7 @@ void get_client_name(FILE * sock_file, connection_thread_t * connection_data){
 }
 
 
-int broadcast_message(llist_node *node, char *message, int sock_fd){
+void broadcast_message(llist_node *node, char *message, int sock_fd){
     char broadcast_message[20 + MAX_CLIENT_NAME_SIZE + strlen(message)];
     char* client_name = ((connection_thread_t*) node->data)->client_name;
 
@@ -232,8 +234,10 @@ int broadcast_message(llist_node *node, char *message, int sock_fd){
 void disconnect_client(FILE* sock_file, llist_node *node){
     connection_thread_t *connection_data = (connection_thread_t*) (node->data);
     int sock_fd = connection_data->sock_fd;
+    char *client_name = connection_data->client_name;
+    printf("%s left the server\n", client_name);
     if(!server_on){ // Tell client to exit.
-        printf("Writing exit to client: %s\n", connection_data->client_name);
+        printf("Writing exit to client: %s\n", client_name);
         write_to_file(sock_file, "exit\n");
         fflush(sock_file);
         sleep(2); // Give client time to disconnect
@@ -244,13 +248,14 @@ void disconnect_client(FILE* sock_file, llist_node *node){
             printf("pthread_detach Error: %d\n", error_code);
             exit(0);            
         }
+        pthread_mutex_lock(&client_llist_mutex);
         llist_destroy_node(client_llist, &node);
+        pthread_mutex_unlock(&client_llist_mutex);
     }
 
-    if(fcntl(sock_fd, F_GETFD) != -1){
+    if(fcntl(sock_fd, F_GETFD) != -1){ // Check if the socket is closed, otherwise close it.
         close(sock_fd);
     }    
-    printf("%s left the server\n", connection_data->client_name);
 }
 
 

@@ -47,5 +47,4 @@ ChatProgram$ make test
 ## TODO:
 - Improve on input args (maybe use flags?).
 - Write documentation.
-- Ask clients to provide a name.
 
