@@ -21,13 +21,9 @@
 
 int server_sock_fd;
 int server_on = 1;
+int MAX_CLIENT_NAME_SIZE = 5;
 
 llist* client_llist;
-
-typedef struct client_thread_s{
-    int sock_fd;
-    pthread_t *thread;
-} connection_thread_t;
 
 void connection_thread_destroy(void *connection){
     connection_thread_t* connection_thread = (connection_thread_t*) connection;
@@ -178,6 +174,8 @@ void* connect_client(void* thread_data){
     poll_fds[0].events = POLLIN;
     timeout = 1000;
 
+    get_client_name(sock_file, connection_data);
+
     char *message;
     while(server_on){
         poll_ret = poll(poll_fds, 1, timeout);
@@ -202,10 +200,23 @@ void* connect_client(void* thread_data){
     fclose(sock_file);
 }
 
+void get_client_name(FILE * sock_file, connection_thread_t * connection_data){
+    write_to_file(sock_file, "Please enter your name:\n");
+    connection_data->client_name = read_from_file_max_size(sock_file, MAX_CLIENT_NAME_SIZE);
+
+    // Remove new line chatacter from name:
+    int i = -1;
+    while(connection_data->client_name[++i] != '\n'){}
+    connection_data->client_name[i] = '\0';
+
+}
+
 
 int broadcast_message(llist_node *node, char *message, int sock_fd){
-    char broadcast_message[20 + strlen(message)];
-    sprintf(broadcast_message, "Message from %d: %s", sock_fd, message);
+    char broadcast_message[20 + MAX_CLIENT_NAME_SIZE + strlen(message)];
+    char* client_name = ((connection_thread_t*) node->data)->client_name;
+
+    sprintf(broadcast_message, "Message from, %s: %s", client_name, message);
     printf("%s", broadcast_message);
     
     llist_node *element = node;
@@ -214,7 +225,6 @@ int broadcast_message(llist_node *node, char *message, int sock_fd){
         next_fd = ((connection_thread_t*)(element->next->data))->sock_fd;
         FILE *next_file = fdopen(next_fd, "w");
         write_to_file(next_file, broadcast_message);
-        fflush(next_file);
         element = element->next;
     }
 }
@@ -223,7 +233,7 @@ void disconnect_client(FILE* sock_file, llist_node *node){
     connection_thread_t *connection_data = (connection_thread_t*) (node->data);
     int sock_fd = connection_data->sock_fd;
     if(!server_on){ // Tell client to exit.
-        printf("Writing exit to client: %d\n", sock_fd);
+        printf("Writing exit to client: %s\n", connection_data->client_name);
         write_to_file(sock_file, "exit\n");
         fflush(sock_file);
         sleep(2); // Give client time to disconnect
@@ -240,7 +250,7 @@ void disconnect_client(FILE* sock_file, llist_node *node){
     if(fcntl(sock_fd, F_GETFD) != -1){
         close(sock_fd);
     }    
-    printf("%d left the server\n", sock_fd);
+    printf("%s left the server\n", connection_data->client_name);
 }
 
 

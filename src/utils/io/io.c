@@ -3,7 +3,8 @@
 #include <unistd.h>
 #include <string.h>
 
-char* read_from_file(FILE* file){
+
+char* read_from_file_max_size(FILE *file, int max_size){
     size_t size = 16;
     size_t old_size;
     int index = 0;
@@ -11,7 +12,9 @@ char* read_from_file(FILE* file){
     bzero(input, size);
     char c;
     while((c = fgetc(file)) != '\n'){
-        input[index++] = c;
+        if(index < max_size){
+            input[index++] = c;
+        }
         if(index >= (size - 1)){
             old_size = size;
             size *= 2;
@@ -24,6 +27,10 @@ char* read_from_file(FILE* file){
     }
     input[index] = '\n';
     return input;
+}
+
+char* read_from_file(FILE* file){
+    return read_from_file_max_size(file, 255);
 }
 
 void write_to_file(FILE *file, char *string){

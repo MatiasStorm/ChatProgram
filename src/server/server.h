@@ -2,6 +2,12 @@
 #define SERVER_H
 #include "../utils/llist/llist.h"
 
+typedef struct connection_thread_s{
+    int sock_fd;
+    char *client_name; 
+    pthread_t *thread;
+} connection_thread_t;
+
 void run_server(int port);
 
 void connection_thread_destroy(void *connection);
@@ -13,6 +19,8 @@ void listen_for_clients(int server_sock_fd);
 void join_connected_threads();
 
 void initialize_client_thread();
+
+void get_client_name(FILE * sock_file, connection_thread_t * connection_data);
 
 void* connect_client(void* thread_data);
 
