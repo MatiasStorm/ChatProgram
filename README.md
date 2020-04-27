@@ -46,5 +46,4 @@ ChatProgram$ make test
 
 ## TODO:
 - Improve on input args (maybe use flags?).
-- Write documentation.
-
+- Use the global client_list in 'broadcast_message' instead of the calling thread node as a param.
