@@ -1,4 +1,4 @@
-# Chat Program
+# Chat Program 
 Simple chat program, that can be used to send messages between computers on a local network.
 
 ## Server
