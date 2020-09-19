@@ -27,7 +27,7 @@ When a client is connected it can send messages to all other clients connected t
 
 ## Utils
 ### llist:
-llist is a linked list implementation, used to the server to keep track of all connectec clients and broadcast messages to all connected clients.
+llist is a linked list implementation, used by the server to keep track of all connected clients and broadcast messages to all connected clients.
 
 ### IO:
 Input/output methods, to handle writing and reading from sockets.
